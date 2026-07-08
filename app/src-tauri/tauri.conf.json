@@ -12,7 +12,7 @@
     }
   },
   "productName": "AuSync",
-  "version": "1.9.7",
+  "version": "1.0.0",
   "identifier": "com.darkinlife71.ausync",
   "build": {
     "beforeDevCommand": "npm run dev",

@@ -3,11 +3,6 @@
   "plugins": {
     "shell": {
       "open": true
-    },
-    "updater": {
-      "endpoints": [
-        "https://github.com/darkinlife71/AuSync/releases/latest/download/latest.json"
-      ]
     }
   },
   "productName": "AuSync",

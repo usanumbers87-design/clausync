@@ -6,7 +6,7 @@
     },
     "updater": {
       "endpoints": [
-        "https://github.com/darkinlife71/AuSync/releases/latest/download/latest.json"
+        "https://github.com/darkinlife71/ausync/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3REE4NTIzMzBDNkEyMjgKUldRb29zWXdJNFhhVndpVERXSE92dTY0WUpFQTliY3pSeElrMUp5SEFRRUxOWkkyTXN6V2xTNXMK"
     }
@@ -33,7 +33,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' https: http://localhost:* https://asset.localhost http://asset.localhost; media-src 'self' blob: http://localhost:*; img-src 'self' data: blob: asset: https: https://asset.localhost; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https:; frame-src 'self' blob: https: https://www.cameronamer.com http://127.0.0.1:*; worker-src 'self' blob:;",
+      "csp": "default-src 'self'; connect-src 'self' https: http://localhost:* https://asset.localhost http://asset.localhost; media-src 'self' blob: http://localhost:*; img-src 'self' data: blob: asset: https: https://asset.localhost; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https:; frame-src 'self' blob: https: http://127.0.0.1:*; worker-src 'self' blob:;",
       "capabilities": [
         "default",
         "mobile-only"

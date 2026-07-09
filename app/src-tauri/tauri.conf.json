@@ -3,6 +3,12 @@
   "plugins": {
     "shell": {
       "open": true
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/darkinlife71/AuSync/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3REE4NTIzMzBDNkEyMjgKUldRb29zWXdJNFhhVndpVERXSE92dTY0WUpFQTliY3pSeElrMUp5SEFRRUxOWkkyTXN6V2xTNXMK"
     }
   },
   "productName": "AuSync",
@@ -37,7 +43,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

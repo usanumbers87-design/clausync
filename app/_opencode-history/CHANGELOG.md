@@ -1,5 +1,11 @@
 # AuSync Development History
 
+## v1.0.5 — Android CI fix
+- Fixed Android NDK toolchain in CI: added `ANDROID_NDK_HOME`, toolchain PATH, CC/AR env vars
+- Added `cargo-ndk` install step
+- Passed `ANDROID_SDK_ROOT` and `ANDROID_NDK_HOME` to tauri-action
+- Previous v1.0.4 failed with `aarch64-linux-android-clang: No such file or directory`
+
 ## v1.0.4 — Android support added
 - Ran `npx tauri android init` to scaffold Android project
 - Generated Android launcher icons from logo SVG via cairosvg

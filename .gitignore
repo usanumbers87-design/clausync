@@ -6,7 +6,9 @@ dist/
 
 # Rust
 /app/src-tauri/target/
-/app/src-tauri/gen/
+/app/src-tauri/gen/schemas/
+/app/src-tauri/gen/android/.gradle/
+/app/src-tauri/gen/android/local.properties
 **/*.rs.bk
 
 # Editors
@@ -22,7 +24,6 @@ Error.html
 
 # Android local builds
 /android/
-/app/src-tauri/gen/android/
 *.apk
 *.aab
 .gradle/
@@ -34,7 +35,6 @@ local.properties
 # Android app files to exclude from git
 /app/src-tauri/src-android/
 /app/src-tauri/tests/android_uri_cache_tests.rs
-/app/src-tauri/gen/schemas/android-schema.json
 /app/src-tauri/icons/android/
 
 

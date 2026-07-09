@@ -324,13 +324,28 @@ jobs:
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Set up Android NDK toolchain
+        run: |
+          NDK_VERSION="27.0.12077973"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> $GITHUB_ENV
+          NDK_TOOLCHAIN="$ANDROID_SDK_ROOT/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          echo "$NDK_TOOLCHAIN" >> $GITHUB_PATH
+          # Set Rust cross-compilation env vars
+          echo "CC_aarch64-linux-android=aarch64-linux-android21-clang" >> $GITHUB_ENV
+          echo "AR_aarch64-linux-android=llvm-ar" >> $GITHUB_ENV
+          echo "CC_armv7-linux-androideabi=armv7a-linux-androideabi21-clang" >> $GITHUB_ENV
+          echo "AR_armv7-linux-androideabi=llvm-ar" >> $GITHUB_ENV
+          echo "CC_x86_64-linux-android=x86_64-linux-android21-clang" >> $GITHUB_ENV
+          echo "AR_x86_64-linux-android=llvm-ar" >> $GITHUB_ENV
+          echo "CC_i686-linux-android=i686-linux-android21-clang" >> $GITHUB_ENV
+          echo "AR_i686-linux-android=llvm-ar" >> $GITHUB_ENV
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
       - name: Install frontend dependencies
         working-directory: app
         run: npm install
-
-      - name: Generate Android project
-        working-directory: app
-        run: npx tauri android init
 
       - name: Prepare Tauri signing key
         shell: node {0}
@@ -350,6 +365,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           projectPath: ./app

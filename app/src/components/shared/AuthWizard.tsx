@@ -1,13 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Key, Lock, ArrowRight, Settings, ShieldCheck, Sun, Moon, HelpCircle, ExternalLink, X, Heart, QrCode } from "lucide-react";
+import { Key, Settings, ShieldCheck, Sun, Moon, Heart, X } from "lucide-react";
 import { load } from '@tauri-apps/plugin-store';
 import { useTheme } from '../../context/ThemeContext';
-import { open } from '@tauri-apps/plugin-shell';
-import { QRCodeSVG } from 'qrcode.react';
-
-type Step = "setup" | "phone" | "code" | "password";
 
 function AuthThemeToggle() {
     const { theme, toggleTheme } = useTheme();
@@ -46,42 +41,11 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
         )
     }
 
-    const [step, setStep] = useState<Step>("setup");
-    const [loading, setLoading] = useState(false);
-
     const [apiId, setApiId] = useState("");
     const [apiHash, setApiHash] = useState("");
 
-    const [phone, setPhone] = useState("");
-    const [code, setCode] = useState("");
-    const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
-    const [floodWait, setFloodWait] = useState<number | null>(null);
-    const [showHelp, setShowHelp] = useState(false);
     const [showDonate, setShowDonate] = useState(false);
-    const [loginMethod, setLoginMethod] = useState<'phone' | 'qr'>('phone');
-    const isMobile = typeof navigator !== 'undefined' && /android|iphone|ipad|ipod/i.test(navigator.userAgent.toLowerCase());
-
-    useEffect(() => {
-        if (isMobile && loginMethod !== 'phone') {
-            setLoginMethod('phone');
-        }
-    }, [isMobile, loginMethod]);
-    const [qrUrl, setQrUrl] = useState<string | null>(null);
-    const [qrPolling, setQrPolling] = useState(false);
-    const qrPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-
-    useEffect(() => {
-        if (!floodWait) return;
-        const interval = setInterval(() => {
-            setFloodWait(prev => {
-                if (prev === null || prev <= 1) return null;
-                return prev - 1;
-            });
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [floodWait]);
 
     useEffect(() => {
         const initStore = async () => {
@@ -126,141 +90,7 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
         }
         setError(null);
         await saveCredentials();
-        setStep("phone");
-        setLoginMethod('phone');
-        setQrUrl(null);
-        setQrPolling(false);
-    };
-
-    const handleQrLogin = async () => {
-        setError(null);
-        setLoading(true);
-        try {
-            const idInt = parseInt(apiId, 10);
-            if (isNaN(idInt)) throw new Error("API ID must be a number");
-
-            const url = await invoke<string>("cmd_auth_qr_login", {
-                apiId: idInt,
-                apiHash: apiHash
-            });
-
-            if (url === "__authorized__") {
-                onLogin();
-                return;
-            }
-
-            setQrUrl(url);
-            setQrPolling(true);
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : String(err));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // QR polling effect
-    useEffect(() => {
-        if (!qrPolling) {
-            if (qrPollRef.current) {
-                clearInterval(qrPollRef.current);
-                qrPollRef.current = null;
-            }
-            return;
-        }
-
-        qrPollRef.current = setInterval(async () => {
-            try {
-                const res = await invoke<{ success: boolean; next_step?: string }>("cmd_auth_qr_poll");
-                if (res.success) {
-                    setQrPolling(false);
-                    if (res.next_step === "password") {
-                        setStep("password");
-                    } else {
-                        onLogin();
-                    }
-                }
-                // If next_step === "waiting", keep polling
-            } catch {
-                // Polling error — keep trying silently
-            }
-        }, 3000);
-
-        return () => {
-            if (qrPollRef.current) {
-                clearInterval(qrPollRef.current);
-                qrPollRef.current = null;
-            }
-        };
-    }, [qrPolling, apiId, apiHash]);
-
-    const handlePhoneSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        try {
-            const idInt = parseInt(apiId, 10);
-            if (isNaN(idInt)) throw new Error("API ID must be a number");
-
-            await invoke("cmd_auth_request_code", {
-                phone,
-                apiId: idInt,
-                apiHash: apiHash
-            });
-            setStep("code");
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : JSON.stringify(err);
-            if (msg.includes("FLOOD_WAIT_")) {
-                const parts = msg.split("FLOOD_WAIT_");
-                if (parts[1]) {
-                    const seconds = parseInt(parts[1]);
-                    if (!isNaN(seconds)) {
-                        setFloodWait(seconds);
-                        return;
-                    }
-                }
-            }
-            setError(msg);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleCodeSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await invoke<{ success: boolean; next_step?: string }>("cmd_auth_sign_in", { code });
-            if (res.success) {
-                onLogin();
-            } else if (res.next_step === "password") {
-                setStep("password");
-            } else {
-                setError("Unknown error");
-            }
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : String(err));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handlePasswordSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await invoke<{ success: boolean; next_step?: string }>("cmd_auth_check_password", { password });
-            if (res.success) {
-                onLogin();
-            } else {
-                setError("Password verification failed.");
-            }
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : String(err));
-        } finally {
-            setLoading(false);
-        }
+        onLogin();
     };
 
     return (
@@ -281,299 +111,60 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                 </div>
 
                 <AnimatePresence mode="wait">
-                    {floodWait ? (
-                        <motion.div
-                            key="flood"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="text-center space-y-6"
-                        >
-                            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                                <span className="text-2xl">⏳</span>
+                    <motion.form
+                        key="setup"
+                        initial={{ x: 20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: -20, opacity: 0 }}
+                        onSubmit={handleSetupSubmit}
+                        className="space-y-5"
+                    >
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">API ID</label>
+                                    <div className="relative">
+                                        <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 auth-form-icon" />
+                                        <input
+                                            type="text"
+                                            value={apiId}
+                                            onChange={(e) => setApiId(e.target.value)}
+                                            placeholder="12345678"
+                                            className="w-full glass-input rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all font-mono text-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">API Hash</label>
+                                    <div className="relative">
+                                        <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 auth-form-icon" />
+                                        <input
+                                            type="text"
+                                            value={apiHash}
+                                            onChange={(e) => setApiHash(e.target.value)}
+                                            placeholder="abcdef123456..."
+                                            className="w-full glass-input rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all font-mono text-sm"
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="text-xl font-bold text-white mb-2">Too Many Requests</h2>
-                                <p className="text-sm text-gray-400">Telegram has temporarily limited your actions.</p>
-                                <p className="text-sm text-gray-400">Please wait before trying again.</p>
-                            </div>
 
-                            <div className="text-5xl font-mono items-center justify-center flex text-blue-400 font-bold">
-                                {Math.floor(floodWait / 60)}:{(floodWait % 60).toString().padStart(2, '0')}
-                            </div>
+                            <button
+                                type="submit"
+                                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
+                            >
+                                Configure <Settings className="w-4 h-4" />
+                            </button>
 
-                            <p className="text-xs text-red-400/60 mt-4">
-                                Do not restart the app. The timer will reset if you do.
-                            </p>
-                        </motion.div>
-                    ) : (
-                        <>
-
-
-                            {step === "setup" && (
-                                <motion.form
-                                    key="setup"
-                                    initial={{ x: 20, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    exit={{ x: -20, opacity: 0 }}
-                                    onSubmit={handleSetupSubmit}
-                                    className="space-y-5"
+                            {import.meta.env.DEV && (
+                                <button
+                                    type="button"
+                                    onClick={() => onLogin()}
+                                    className="w-full text-xs text-red-400/60 hover:text-red-300 transition-colors py-1"
                                 >
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">API ID</label>
-                                            <div className="relative">
-                                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 auth-form-icon" />
-                                                <input
-                                                    type="text"
-                                                    value={apiId}
-                                                    onChange={(e) => setApiId(e.target.value)}
-                                                    placeholder="12345678"
-                                                    className="w-full glass-input rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all font-mono text-sm"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">API Hash</label>
-                                            <div className="relative">
-                                                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 auth-form-icon" />
-                                                <input
-                                                    type="text"
-                                                    value={apiHash}
-                                                    onChange={(e) => setApiHash(e.target.value)}
-                                                    placeholder="abcdef123456..."
-                                                    className="w-full glass-input rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all font-mono text-sm"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
-                                    >
-                                        Configure <Settings className="w-4 h-4" />
-                                    </button>
-
-                                    {false && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowHelp(true)}
-                                            className="w-full text-xs text-blue-300 hover:text-white transition-colors flex items-center justify-center gap-1.5 py-1"
-                                        >
-                                            <HelpCircle className="w-3 h-3" />
-                                            How do I get my API credentials?
-                                        </button>
-                                    )}
-
-                                    {import.meta.env.DEV && (
-                                        <button
-                                            type="button"
-                                            onClick={() => onLogin()}
-                                            className="w-full text-xs text-red-400/60 hover:text-red-300 transition-colors py-1"
-                                        >
-                                            Dev Mode
-                                        </button>
-                                    )}
-                                </motion.form>
+                                    Dev Mode
+                                </button>
                             )}
-
-
-                            {step === "phone" && (
-                                <motion.div
-                                    key="phone"
-                                    initial={{ x: 20, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    exit={{ x: -20, opacity: 0 }}
-                                    className="space-y-6"
-                                >
-                                    {/* Phone / QR Toggle */}
-                                    {!isMobile && (
-                                        <div className="flex rounded-xl overflow-hidden border border-white/10">
-                                            <button
-                                                type="button"
-                                                onClick={() => { setLoginMethod('phone'); setQrUrl(null); setQrPolling(false); setError(null); }}
-                                                className={`flex-1 py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-all ${
-                                                    loginMethod === 'phone'
-                                                        ? 'bg-white/15 text-white'
-                                                        : 'text-white/50 hover:text-white/70'
-                                                }`}
-                                            >
-                                                <Phone className="w-4 h-4" /> Phone Number
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setLoginMethod('qr'); setError(null); handleQrLogin(); }}
-                                                className={`flex-1 py-2.5 text-sm font-medium flex items-center justify-center gap-2 transition-all ${
-                                                    loginMethod === 'qr'
-                                                        ? 'bg-white/15 text-white'
-                                                        : 'text-white/50 hover:text-white/70'
-                                                }`}
-                                            >
-                                                <QrCode className="w-4 h-4" /> QR Code
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {loginMethod === 'phone' ? (
-                                        <form onSubmit={handlePhoneSubmit} className="space-y-6">
-                                            <div className="space-y-2">
-                                                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Phone Number</label>
-                                                <div className="relative">
-                                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 auth-form-icon" />
-                                                    <input
-                                                        type="tel"
-                                                        value={phone}
-                                                        onChange={(e) => setPhone(e.target.value)}
-                                                        placeholder="+1 234 567 8900"
-                                                        className="w-full glass-input rounded-xl pl-12 pr-4 py-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all text-lg tracking-wide"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-col gap-3">
-                                                <button
-                                                    type="submit"
-                                                    disabled={loading}
-                                                    className="w-full bg-white text-black hover:bg-gray-100 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {loading ? "Connecting..." : <>Continue <ArrowRight className="w-5 h-5" /></>}
-                                                </button>
-                                                <button type="button" onClick={() => setStep("setup")} className="text-xs text-gray-500 hover:text-white transition-colors py-2">
-                                                    Back to Configuration
-                                                </button>
-                                            </div>
-                                        </form>
-                                    ) : (
-                                        <div className="flex flex-col items-center gap-5">
-                                            {loading && !qrUrl && (
-                                                <div className="w-52 h-52 rounded-2xl bg-white/5 flex items-center justify-center">
-                                                    <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                                                </div>
-                                            )}
-                                            {qrUrl && (
-                                                <>
-                                                    <div className="p-4 bg-white rounded-2xl shadow-xl">
-                                                        <QRCodeSVG
-                                                            value={qrUrl}
-                                                            size={200}
-                                                            level="M"
-                                                            bgColor="#ffffff"
-                                                            fgColor="#000000"
-                                                        />
-                                                    </div>
-                                                    <div className="text-center space-y-1">
-                                                        <p className="text-sm text-white/80">Scan with your Telegram app</p>
-                                                        <p className="text-xs text-white/40">Settings &gt; Devices &gt; Link Desktop Device</p>
-                                                    </div>
-                                                    {qrPolling && (
-                                                        <div className="flex items-center gap-2 text-xs text-blue-300">
-                                                            <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                                                            Waiting for scan...
-                                                        </div>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleQrLogin}
-                                                        className="text-xs text-white/50 hover:text-white transition-colors"
-                                                    >
-                                                        Refresh QR Code
-                                                    </button>
-                                                </>
-                                            )}
-                                            <button type="button" onClick={() => { setStep("setup"); setQrPolling(false); }} className="text-xs text-gray-500 hover:text-white transition-colors py-2">
-                                                Back to Configuration
-                                            </button>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )}
-
-
-                            {step === "code" && (
-                                <motion.form
-                                    key="code"
-                                    initial={{ x: 20, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    exit={{ x: -20, opacity: 0 }}
-                                    onSubmit={handleCodeSubmit}
-                                    className="space-y-6"
-                                >
-                                    <div className="space-y-2">
-                                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Telegram Code</label>
-                                        <div className="relative">
-                                            <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 auth-form-icon" />
-                                            <input
-                                                type="text"
-                                                value={code}
-                                                onChange={(e) => setCode(e.target.value)}
-                                                placeholder="1 2 3 4 5"
-                                                className="w-full glass-input rounded-xl pl-12 pr-4 py-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all text-2xl tracking-[0.5em] font-mono text-center"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-3">
-                                        <button
-                                            type="submit"
-                                            disabled={loading}
-                                            className="w-full bg-white text-black hover:bg-gray-100 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98]"
-                                        >
-                                            {loading ? "Verifying..." : "Sign In"}
-                                        </button>
-                                        <button type="button" onClick={() => setStep("phone")} className="text-xs text-gray-500 hover:text-white transition-colors py-2">
-                                            Change Phone Number
-                                        </button>
-                                    </div>
-                                </motion.form>
-                            )}
-
-
-                            {step === "password" && (
-                                <motion.form
-                                    key="password"
-                                    initial={{ x: 20, opacity: 0 }}
-                                    animate={{ x: 0, opacity: 1 }}
-                                    exit={{ x: -20, opacity: 0 }}
-                                    onSubmit={handlePasswordSubmit}
-                                    className="space-y-6"
-                                >
-                                    <div className="space-y-2">
-                                        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
-                                            <p className="text-xs text-blue-300 text-center">
-                                                Your account has Two-Factor Authentication enabled.
-                                                Please enter your cloud password to continue.
-                                            </p>
-                                        </div>
-                                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Cloud Password</label>
-                                        <div className="relative">
-                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 auth-form-icon" />
-                                            <input
-                                                type="password"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                placeholder="Enter your password"
-                                                className="w-full glass-input rounded-xl pl-12 pr-4 py-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all text-lg"
-                                                autoFocus
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-3">
-                                        <button
-                                            type="submit"
-                                            disabled={loading || !password}
-                                            className="w-full bg-white text-black hover:bg-gray-100 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {loading ? "Verifying..." : "Unlock"}
-                                        </button>
-                                        <button type="button" onClick={() => { setStep("code"); setPassword(""); setError(null); }} className="text-xs text-gray-500 hover:text-white transition-colors py-2">
-                                            Back to Code Entry
-                                        </button>
-                                    </div>
-                                </motion.form>
-                            )}
-                        </>
-                    )}
+                        </motion.form>
                 </AnimatePresence>
 
                 {error && (
@@ -598,86 +189,6 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                 </div>
             </motion.div>
 
-
-            <AnimatePresence>
-                {showHelp && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-                        onClick={() => setShowHelp(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            className="glass bg-telegram-surface border border-telegram-border rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-telegram-text">Getting Started</h2>
-                                <button onClick={() => setShowHelp(false)} className="p-2 hover:bg-telegram-hover rounded-lg transition-colors">
-                                    <X className="w-5 h-5 text-telegram-subtext" />
-                                </button>
-                            </div>
-
-                            <div className="space-y-6 text-telegram-text">
-                                <div className="p-4 bg-telegram-primary/10 border border-telegram-primary/20 rounded-xl">
-                                    <p className="text-sm text-telegram-subtext">
-                                        <strong className="text-telegram-primary">ClauSync</strong> needs your Telegram API credentials to connect. You'll need a Telegram account and API credentials to get started.
-                                    </p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h3 className="font-semibold flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-telegram-primary text-white text-xs font-bold rounded-full flex items-center justify-center">1</span>
-                                        Go to Telegram's Developer Portal
-                                    </h3>
-                                    <p className="text-sm text-telegram-subtext ml-8">
-                                        Visit <button type="button" onClick={(e) => { e.preventDefault(); open('https://my.telegram.org'); }} className="text-telegram-primary underline hover:text-telegram-text cursor-pointer">my.telegram.org</button> and log in with your phone number.
-                                    </p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h3 className="font-semibold flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-telegram-primary text-white text-xs font-bold rounded-full flex items-center justify-center">2</span>
-                                        Create a New Application
-                                    </h3>
-                                    <p className="text-sm text-telegram-subtext ml-8">
-                                        Click on <strong>"API development tools"</strong> and create a new application. Use any name and description you like.
-                                    </p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h3 className="font-semibold flex items-center gap-2">
-                                        <span className="w-6 h-6 bg-telegram-primary text-white text-xs font-bold rounded-full flex items-center justify-center">3</span>
-                                        Copy Your Credentials
-                                    </h3>
-                                    <p className="text-sm text-telegram-subtext ml-8">
-                                        After creating the app, you'll see your <strong>API ID</strong> (a number) and <strong>API Hash</strong> (a string). Copy both and paste them into the fields on the previous screen.
-                                    </p>
-                                </div>
-
-                                <div className="p-4 bg-telegram-hover rounded-xl border border-telegram-border">
-                                    <p className="text-xs text-telegram-subtext">
-                                        <strong>🔒 Privacy:</strong> Your credentials are stored locally on your device and are never sent to any third-party servers. All data goes directly between you and Telegram.
-                                    </p>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={(e) => { e.preventDefault(); open('https://my.telegram.org'); }}
-                                    className="w-full bg-telegram-primary text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-telegram-primary/90 transition-colors"
-                                >
-                                    <ExternalLink className="w-4 h-4" />
-                                    Open my.telegram.org
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             <AnimatePresence>
                 {showDonate && (

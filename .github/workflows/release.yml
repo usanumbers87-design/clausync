@@ -324,13 +324,13 @@ jobs:
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Set up Android NDK toolchain
+      - name: Install Android NDK
         run: |
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "ndk;27.0.12077973"
           NDK_VERSION="27.0.12077973"
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> $GITHUB_ENV
           NDK_TOOLCHAIN="$ANDROID_SDK_ROOT/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
           echo "$NDK_TOOLCHAIN" >> $GITHUB_PATH
-          # Set Rust cross-compilation env vars
           echo "CC_aarch64-linux-android=aarch64-linux-android21-clang" >> $GITHUB_ENV
           echo "AR_aarch64-linux-android=llvm-ar" >> $GITHUB_ENV
           echo "CC_armv7-linux-androideabi=armv7a-linux-androideabi21-clang" >> $GITHUB_ENV
@@ -341,6 +341,7 @@ jobs:
           echo "AR_i686-linux-android=llvm-ar" >> $GITHUB_ENV
 
       - name: Install cargo-ndk
+        run: cargo install cargo-ndk
         run: cargo install cargo-ndk
 
       - name: Install frontend dependencies

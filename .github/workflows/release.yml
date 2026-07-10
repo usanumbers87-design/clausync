@@ -361,17 +361,21 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_ENV, `TAURI_SIGNING_PRIVATE_KEY=${b64}\n`);
 
       - name: Build Android APK
-        uses: tauri-apps/tauri-action@v0
+        run: npm run tauri android build -- --target aarch64-linux-android
+        working-directory: app
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
-        with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
-          projectPath: ./app
-          args: '--target aarch64-linux-android'
+
+      - name: Upload APK to release
+        run: |
+          find app/src-tauri/gen/android -name "*.apk" -type f 2>/dev/null | while read apk; do
+            echo "Uploading: $apk"
+            gh release upload "${GITHUB_REF_NAME}" "$apk" --repo darkinlife71/ausync --clobber || true
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-release:
     needs: [create-release, build-tauri, build-android]

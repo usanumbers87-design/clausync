@@ -1,6 +1,6 @@
 {
   "common": {
-    "app_title": "AuSync",
+    "app_title": "ClauSync",
     "logout": "Log Out",
     "search_placeholder": "Search files...",
     "sync": "Sync",
@@ -28,8 +28,8 @@
     "loading": "Loading...",
     "language": "Language",
     "language_region": "Language & Region",
-    "connected_telegram": "Connected to Telegram",
-    "disconnected_telegram": "Disconnected from Telegram",
+    "connected_telegram": "Connected",
+    "disconnected_telegram": "Disconnected",
     "syncing": "Syncing...",
     "folder_name_placeholder": "Folder Name",
     "upload_file": "Upload File",

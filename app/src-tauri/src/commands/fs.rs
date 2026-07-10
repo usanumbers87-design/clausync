@@ -457,7 +457,7 @@ pub async fn create_folder_inner(
         broadcast: true,
         megagroup: false,
         title: format!("{} [TD]", name),
-        about: "AuSync Storage Folder\n[ausync-folder]".to_string(),
+        about: "ClauSync Storage Folder\n[clausync-folder]".to_string(),
         geo_point: None,
         address: None,
         for_import: false,
@@ -1584,7 +1584,7 @@ pub async fn cmd_scan_folders(
                     }).await {
                         Ok(tl::enums::messages::ChatFull::Full(f)) => {
                             if let tl::enums::ChatFull::Full(cf) = f.full_chat {
-                                 if cf.about.contains("[ausync-folder]") {
+                                 if cf.about.contains("[clausync-folder]") {
                                      log::info!(" -> MATCH via About: {}", name);
                                      let username = c.raw.username.clone();
                                      let is_public = username.is_some();

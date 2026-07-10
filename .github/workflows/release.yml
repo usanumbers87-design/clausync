@@ -59,7 +59,7 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   tag_name: tag,
-                  name: `AuSync v${process.env.RELEASE_VERSION}`,
+                  name: `ClauSync v${process.env.RELEASE_VERSION}`,
                   body: process.env.RELEASE_BODY,
                   draft: true,
                   prerelease: false
@@ -210,7 +210,7 @@ jobs:
           # ── Write new AppRun ──
           cat > squashfs-root/AppRun << 'APPRUN_EOF'
           #!/usr/bin/env bash
-          # ── AuSync — cross-distro AppRun wrapper ──
+          # ── ClauSync — cross-distro AppRun wrapper ──
           # Fixes EGL_BAD_ALLOC on Arch/Fedora/rolling-release distros by ensuring
           # the host's GPU driver stack is used instead of bundled Ubuntu Mesa libs.
           set -u
@@ -372,7 +372,7 @@ jobs:
         run: |
           find app/src-tauri/gen/android -name "*.apk" -type f 2>/dev/null | while read apk; do
             echo "Uploading: $apk"
-            gh release upload "${GITHUB_REF_NAME}" "$apk" --repo darkinlife71/ausync --clobber || true
+            gh release upload "${GITHUB_REF_NAME}" "$apk" --repo darkinlife71/clausync --clobber || true
           done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

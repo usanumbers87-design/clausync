@@ -1,6 +1,6 @@
 {
   "common": {
-    "app_title": "AuSync",
+    "app_title": "ClauSync",
     "logout": "Çıkış Yap",
     "search_placeholder": "Dosya ara...",
     "sync": "Eşitle",
@@ -28,8 +28,8 @@
     "loading": "Yükleniyor...",
     "language": "Dil",
     "language_region": "Dil ve Bölge",
-    "connected_telegram": "Telegram'a Bağlı",
-    "disconnected_telegram": "Telegram Bağlantısı Kesildi",
+    "connected_telegram": "Connected",
+    "disconnected_telegram": "Disconnected",
     "syncing": "Eşitleniyor...",
     "folder_name_placeholder": "Klasör Adı",
     "upload_file": "Dosya Yükle",

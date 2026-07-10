@@ -1,8 +1,8 @@
-# AuSync
+# ClauSync
 
 Secure cloud storage powered by Telegram.
 
-AuSync is a desktop application that turns your Telegram account into an unlimited, secure cloud storage drive. Built with Tauri, Rust, and React.
+ClauSync is a desktop application that turns your Telegram account into an unlimited, secure cloud storage drive. Built with Tauri, Rust, and React.
 
 ## Features
 - Unlimited cloud storage via Telegram

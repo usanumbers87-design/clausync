@@ -1,6 +1,6 @@
 {
   "common": {
-    "app_title": "AuSync",
+    "app_title": "ClauSync",
     "logout": "ログアウト",
     "search_placeholder": "ファイルを検索...",
     "sync": "同期",
@@ -28,8 +28,8 @@
     "loading": "読み込み中...",
     "language": "言語",
     "language_region": "言語と地域",
-    "connected_telegram": "Telegram に接続済み",
-    "disconnected_telegram": "Telegram から切断",
+    "connected_telegram": "Connected",
+    "disconnected_telegram": "Disconnected",
     "syncing": "同期中...",
     "folder_name_placeholder": "フォルダ名",
     "upload_file": "ファイルをアップロード",

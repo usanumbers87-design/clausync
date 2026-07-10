@@ -1,7 +1,7 @@
 [package]
-name = "ausync"
+name = "clausync"
 version = "1.0.0"
-description = "AuSync - Secure cloud storage powered by Telegram"
+description = "ClauSync - Secure cloud storage powered by Telegram"
 authors = ["darkinlife71"]
 edition = "2021"
 

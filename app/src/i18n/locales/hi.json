@@ -1,6 +1,6 @@
 {
   "common": {
-    "app_title": "टेलीग्राम ड्राइव",
+    "app_title": "ClauSync",
     "logout": "लॉग आउट",
     "search_placeholder": "फाइलें खोजें...",
     "sync": "सिंक करें",
@@ -28,8 +28,8 @@
     "loading": "लोड हो रहा है...",
     "language": "भाषा",
     "language_region": "भाषा और क्षेत्र",
-    "connected_telegram": "टेलीग्राम से जुड़ा है",
-    "disconnected_telegram": "टेलीग्राम से डिस्कनेक्ट हो गया",
+    "connected_telegram": "Connected",
+    "disconnected_telegram": "Disconnected",
     "syncing": "सिंक हो रहा है...",
     "folder_name_placeholder": "फ़ोल्डर का नाम",
     "upload_file": "फ़ाइल अपलोड करें",

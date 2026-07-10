@@ -3,7 +3,7 @@
 
 /// Must match the `identifier` in tauri.conf.json
 #[cfg(target_os = "linux")]
-const BUNDLE_ID: &str = "com.darkinlife71.ausync";
+const BUNDLE_ID: &str = "com.darkinlife71.clausync";
 
 fn main() {
     // Fix EGL_BAD_ALLOC on Linux distros (especially Arch) where the AppImage's

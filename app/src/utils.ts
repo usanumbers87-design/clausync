@@ -141,7 +141,7 @@ export async function nativeShareOrCopy(
         try {
             await navigator.share({
                 title: `Shared file: ${name}`,
-                text: `Download "${name}" (${sizeStr}) via AuSync`,
+                text: `Download "${name}" (${sizeStr}) via ClauSync`,
                 url: link,
             });
             return;

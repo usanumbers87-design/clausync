@@ -6,14 +6,14 @@
     },
     "updater": {
       "endpoints": [
-        "https://github.com/darkinlife71/ausync/releases/latest/download/latest.json"
+        "https://github.com/darkinlife71/clausync/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3REE4NTIzMzBDNkEyMjgKUldRb29zWXdJNFhhVndpVERXSE92dTY0WUpFQTliY3pSeElrMUp5SEFRRUxOWkkyTXN6V2xTNXMK"
     }
   },
-  "productName": "AuSync",
+  "productName": "ClauSync",
   "version": "1.0.0",
-  "identifier": "com.darkinlife71.ausync",
+  "identifier": "com.darkinlife71.clausync",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -23,7 +23,7 @@
   "app": {
     "windows": [
       {
-        "title": "AuSync",
+        "title": "ClauSync",
         "width": 1200,
         "height": 800,
         "minWidth": 1000,

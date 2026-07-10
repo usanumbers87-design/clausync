@@ -1,4 +1,4 @@
-package com.darkinlife71.ausync
+package com.darkinlife71.clausync
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge

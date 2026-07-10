@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { load } from "@tauri-apps/plugin-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthWizard } from "./components/shared/AuthWizard";
+import { VaultGate } from "./components/shared/VaultGate";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 import { UpdateBanner } from "./components/shared/UpdateBanner";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
@@ -28,6 +29,7 @@ type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 function AppContent() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
+  const [vaultUnlocked, setVaultUnlocked] = useState(false);
   const { theme } = useTheme();
   const { available, version, downloading, progress, downloadAndInstall, dismissUpdate } = useUpdateCheck();
   const { isMobile } = usePlatform();
@@ -132,11 +134,16 @@ function AppContent() {
     return (
       <main className="h-screen w-screen flex items-center justify-center bg-telegram-bg">
         <div className="flex flex-col items-center gap-4">
-          <img src="/logo.svg" className="w-16 h-16 drop-shadow-lg animate-pulse" alt="AuSync" />
+          <img src="/logo.svg" className="w-16 h-16 drop-shadow-lg animate-pulse" alt="ClauSync" />
           <p className="text-sm text-telegram-subtext tracking-wide">Restoring session...</p>
         </div>
       </main>
     );
+  }
+
+  // Vault gate - must enter passcode before accessing the app
+  if (!vaultUnlocked) {
+    return <VaultGate onUnlocked={() => setVaultUnlocked(true)} />;
   }
 
   return (

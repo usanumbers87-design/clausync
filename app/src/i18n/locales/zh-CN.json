@@ -1,6 +1,6 @@
 {
   "common": {
-    "app_title": "AuSync",
+    "app_title": "ClauSync",
     "logout": "退出登录",
     "search_placeholder": "搜索文件...",
     "sync": "同步",
@@ -28,8 +28,8 @@
     "loading": "加载中...",
     "language": "语言",
     "language_region": "语言与地区",
-    "connected_telegram": "已连接至 Telegram",
-    "disconnected_telegram": "与 Telegram 断开连接",
+    "connected_telegram": "Connected",
+    "disconnected_telegram": "Disconnected",
     "syncing": "正在同步...",
     "folder_name_placeholder": "文件夹名称",
     "upload_file": "上传文件",

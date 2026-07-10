@@ -1,6 +1,6 @@
 {
   "common": {
-    "app_title": "تليجرام درايف",
+    "app_title": "ClauSync",
     "logout": "تسجيل الخروج",
     "search_placeholder": "البحث عن الملفات...",
     "sync": "مزامنة",
@@ -28,8 +28,8 @@
     "loading": "جاري التحميل...",
     "language": "اللغة",
     "language_region": "اللغة والمنطقة",
-    "connected_telegram": "متصل بتليجرام",
-    "disconnected_telegram": "غير متصل بتليجرام",
+    "connected_telegram": "Connected",
+    "disconnected_telegram": "Disconnected",
     "syncing": "جاري المزامنة...",
     "folder_name_placeholder": "اسم المجلد",
     "upload_file": "رفع ملف",

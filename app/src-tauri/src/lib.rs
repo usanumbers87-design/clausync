@@ -42,6 +42,7 @@ pub mod commands;
 pub mod bandwidth;
 pub mod vpn_optimizer;
 pub mod socks5_bridge;
+pub mod vault;
 
 use tauri::Manager;
 
@@ -374,7 +375,7 @@ fn cmd_get_system_diagnostics(
 ) -> Result<String, String> {
     let mut lines: Vec<String> = Vec::new();
 
-    lines.push("=== AuSync Diagnostics ===".into());
+    lines.push("=== ClauSync Diagnostics ===".into());
     lines.push(format!("Package: {}", env!("CARGO_PKG_NAME")));
     lines.push(format!("Version: {}", env!("CARGO_PKG_VERSION")));
 
@@ -496,7 +497,7 @@ pub fn run() {
                                             let _ = crate::jni_cache::set_class_loader(class_loader_global);
                                         }
 
-                                        let class_name_jstr = match env.new_string("com.darkinlife71.ausync.MainActivity") {
+                                        let class_name_jstr = match env.new_string("com.darkinlife71.clausync.MainActivity") {
                                             Ok(s) => Some(s),
                                             Err(e) => {
                                                 log::error!("JNI: Failed to create MainActivity class name string: {}", e);
@@ -744,6 +745,8 @@ pub fn run() {
             commands::cmd_assign_folder_to_group,
             commands::cmd_update_group_order,
             commands::cmd_get_groups,
+            vault::cmd_check_vault,
+            vault::cmd_set_vault_passcode,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

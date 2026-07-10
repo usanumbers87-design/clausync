@@ -15,8 +15,7 @@
     "clipboard-manager:allow-write-text",
     "dialog:allow-open",
     "dialog:allow-save",
-    "fs:allow-read",
-    "fs:allow-write",
-    "fs:scope-app-recursive"
+    "fs:default",
+    "fs:allow-write"
   ]
 }

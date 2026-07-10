@@ -745,8 +745,9 @@ pub fn run() {
             commands::cmd_assign_folder_to_group,
             commands::cmd_update_group_order,
             commands::cmd_get_groups,
-            vault::cmd_check_vault,
-            vault::cmd_set_vault_passcode,
+            vault::cmd_vault_is_configured,
+            vault::cmd_vault_set_passcode,
+            vault::cmd_vault_check,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

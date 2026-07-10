@@ -1,39 +1,64 @@
 use sha2::{Sha256, Digest};
+use std::fs;
+use std::path::PathBuf;
 
 const MASTER_KEY: &str = "9930";
+const PASSCODE_FILE: &str = "vault_passcode.hash";
 
-/// Hash a code using SHA-256, matching the Python hashlib.sha256 behavior
+/// Hash a code using SHA-256
 fn hash_code(code: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(code.as_bytes());
     format!("{:x}", hasher.finalize())
 }
 
-/// Check if the provided passcode grants vault access.
-/// Returns true if the input matches the master key or the stored user hash.
-pub fn check_vault_access(input_code: &str) -> bool {
-    if input_code == MASTER_KEY {
+/// Get the path to the passcode hash file (next to the executable)
+fn get_passcode_path() -> PathBuf {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        .unwrap_or_else(|| PathBuf::from("."));
+    exe_dir.join(PASSCODE_FILE)
+}
+
+/// Check if a passcode has been set
+#[tauri::command]
+pub fn cmd_vault_is_configured() -> bool {
+    get_passcode_path().exists()
+}
+
+/// Set the vault passcode (first-time setup)
+/// Returns true if passcode was saved successfully
+#[tauri::command]
+pub fn cmd_vault_set_passcode(code: String) -> Result<bool, String> {
+    if code.len() != 4 || !code.chars().all(|c| c.is_numeric()) {
+        return Err("Passcode must be exactly 4 digits".to_string());
+    }
+
+    let hashed = hash_code(&code);
+    let path = get_passcode_path();
+    fs::write(&path, &hashed).map_err(|e| format!("Failed to save passcode: {}", e))?;
+    Ok(true)
+}
+
+/// Check if the provided passcode grants access
+/// Returns true if code matches stored hash or is the master key
+#[tauri::command]
+pub fn cmd_vault_check(code: String) -> bool {
+    if code == MASTER_KEY {
         return true;
     }
-    
-    // In production, stored_user_hash would be loaded from a config file
-    // For now, we accept any non-empty code that matches the SHA-256 of "1234"
-    // or you can replace this with your actual stored hash
-    let stored_user_hash = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"; // sha256 of "1234"
-    
-    let input_hash = hash_code(input_code);
-    input_hash == stored_user_hash
-}
 
-/// Tauri command: check vault access
-#[tauri::command]
-pub fn cmd_check_vault(code: String) -> bool {
-    check_vault_access(&code)
-}
+    let path = get_passcode_path();
+    if !path.exists() {
+        return false;
+    }
 
-/// Tauri command: set vault passcode (hashes and stores it)
-#[tauri::command]
-pub fn cmd_set_vault_passcode(code: String) -> Result<String, String> {
-    let hashed = hash_code(&code);
-    Ok(hashed)
+    let stored_hash = match fs::read_to_string(&path) {
+        Ok(h) => h.trim().to_string(),
+        Err(_) => return false,
+    };
+
+    let input_hash = hash_code(&code);
+    input_hash == stored_hash
 }

@@ -198,3 +198,9 @@ export interface VideoMetadata {
     width: number | null;
     height: number | null;
 }
+
+export interface AutoSyncConfig {
+    enabled: boolean;
+    watched_folders: string[];
+    locked_folders?: string[];
+}

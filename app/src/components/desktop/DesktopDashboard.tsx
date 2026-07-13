@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { toast } from 'sonner';
 
 import { TelegramFile, BandwidthStats, ShareInfo } from '../../types';
@@ -104,6 +105,17 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
 
     const { uploadQueue, setUploadQueue, handleManualUpload, handleFolderUpload, handleDropUpload, handleUrlUpload, cancelAll: cancelUploads, cancelItem: cancelUploadItem, retryItem: retryUploadItem } = useFileUpload(activeFolderId, store);
     const { downloadQueue, queueDownload, queueBulkDownload, clearFinished: clearDownloads, cancelAll: cancelDownloads, cancelItem: cancelDownloadItem, retryItem: retryDownloadItem } = useFileDownload(store);
+
+    // Auto-sync: listen for new files detected by the background watcher
+    useEffect(() => {
+        const unlisten = listen<{ path: string; size: number }>('auto-sync-new-file', (event) => {
+            const { path: filePath } = event.payload;
+            invoke('cmd_upload_file', { path: filePath, folderId: activeFolderId }).catch((e) => {
+                console.warn('Auto-sync upload failed:', filePath, e);
+            });
+        });
+        return () => { unlisten.then(fn => fn()); };
+    }, [activeFolderId]);
 
     const {
         handleDelete, handleBulkDelete, handleBulkDownload,

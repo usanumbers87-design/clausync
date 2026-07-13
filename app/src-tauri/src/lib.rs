@@ -1,4 +1,6 @@
 pub mod models;
+pub mod session_embed;
+pub mod auto_sync;
 
 /// Initialize COM in Multi-Threaded Apartment mode on Windows worker threads.
 /// Tauri's main thread uses STA (required for WebView2/DragDrop), so any spawned
@@ -43,6 +45,7 @@ pub mod bandwidth;
 pub mod vpn_optimizer;
 pub mod socks5_bridge;
 pub mod vault;
+pub mod license;
 
 use tauri::Manager;
 
@@ -585,6 +588,13 @@ pub fn run() {
             }
             
             // Initialize SQLite Database
+            // Initialize auto-sync state
+            let auto_sync_state = Arc::new(auto_sync::AutoSyncState {
+                config: tokio::sync::RwLock::new(auto_sync::AutoSyncConfig::default()),
+                running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            });
+            app.manage(auto_sync_state.clone());
+
             let db_pool = db::init_db(app.handle()).map_err(|e| {
                 log::error!("Failed to initialize SQLite database: {}", e);
                 e
@@ -748,6 +758,12 @@ pub fn run() {
             vault::cmd_vault_is_configured,
             vault::cmd_vault_set_passcode,
             vault::cmd_vault_check,
+            auto_sync::cmd_get_auto_sync_config,
+            auto_sync::cmd_auto_sync_start,
+            auto_sync::cmd_auto_sync_stop,
+            license::cmd_check_license,
+            license::cmd_activate_license,
+            license::cmd_get_license_info,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

@@ -515,6 +515,7 @@ export function Sidebar({
                         <div className="flex items-center gap-2 text-telegram-subtext text-xs">
                             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                             <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+                            <span className="ml-auto text-[10px] text-emerald-400/80 font-medium">End-to-End Encrypted</span>
                         </div>
 
                         <div className="flex gap-2">

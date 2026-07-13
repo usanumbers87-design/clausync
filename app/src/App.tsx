@@ -4,10 +4,12 @@ import { load } from "@tauri-apps/plugin-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthWizard } from "./components/shared/AuthWizard";
 import { VaultGate } from "./components/shared/VaultGate";
+import { LicenseActivation } from "./components/shared/LicenseActivation";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 import { UpdateBanner } from "./components/shared/UpdateBanner";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { usePlatform } from "./hooks/usePlatform";
+import { sendSessionExpiredAlert } from "./utils/ntfy";
 import "./App.css";
 
 const DesktopDashboard = React.lazy(() => import("./components/desktop/DesktopDashboard").then(m => ({ default: m.Dashboard })));
@@ -30,6 +32,7 @@ type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 function AppContent() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
   const [vaultUnlocked, setVaultUnlocked] = useState(false);
+  const [licenseStatus, setLicenseStatus] = useState<"loading" | "activated" | "not_activated">("loading");
   const { theme } = useTheme();
   const { available, version, downloading, progress, downloadAndInstall, dismissUpdate } = useUpdateCheck();
   const { isMobile } = usePlatform();
@@ -69,11 +72,24 @@ function AppContent() {
     }
   }, [settings.performanceMode, isLoaded]);
 
-  // On mount: check for a saved session and auto-restore it.
-  // This is the SINGLE source of truth for the initial connection.
-  // useTelegramConnection (inside Dashboard) no longer calls cmd_connect on mount.
+  // Check license status once vault is unlocked
   useEffect(() => {
-    const checkSession = async () => {
+    if (!vaultUnlocked) return;
+    const check = async () => {
+      try {
+        const activated = await invoke<boolean>("cmd_check_license");
+        setLicenseStatus(activated ? "activated" : "not_activated");
+      } catch {
+        setLicenseStatus("not_activated");
+      }
+    };
+    check();
+  }, [vaultUnlocked]);
+
+  // On mount: check for saved credentials. If they exist, try to connect
+  // but always go to dashboard regardless. AuthWizard only if no credentials.
+  useEffect(() => {
+    const init = async () => {
       try {
         const store = await load("config.json");
         const savedId = await store.get<string>("api_id");
@@ -89,31 +105,31 @@ function AppContent() {
           return;
         }
 
-        // Initialize the client with the saved API ID
-        await invoke("cmd_connect", { apiId });
-
-        // Verify the session is still valid with Telegram servers
-        const ok = await invoke<boolean>("cmd_check_connection");
-        if (ok) {
-          setAuthStatus("authenticated");
-        } else {
-          setAuthStatus("unauthenticated");
-        }
+        // Try to initialize the backend client. If it fails, the dashboard
+        // will show a recoverable state and retry automatically.
+        await invoke("cmd_connect", { apiId }).catch(() => {});
       } catch (err) {
-        console.warn("Session restore failed, showing login:", err);
-        // Session file is corrupt or revoked — clean up and show login
-        try {
-          const store = await load("config.json");
-          await store.delete("api_id");
-          await store.save();
-        } catch {
-          // best-effort cleanup
-        }
-        setAuthStatus("unauthenticated");
+        console.warn("Failed load config:", err);
       }
+
+      // Always show the dashboard when credentials exist — no need for
+      // the user to re-enter API ID/Hash if the network is temporarily down.
+      setAuthStatus("authenticated");
     };
 
-    checkSession();
+    init();
+  }, []);
+
+  // Silent global listener for auth errors — sends notification to admin
+  // without the client seeing anything.
+  useEffect(() => {
+    const handler = (event: PromiseRejectionEvent) => {
+      if (event.reason && String(event.reason).includes("AUTH_KEY_UNREGISTERED")) {
+        sendSessionExpiredAlert();
+      }
+    };
+    window.addEventListener('unhandledrejection', handler);
+    return () => window.removeEventListener('unhandledrejection', handler);
   }, []);
 
   // Clean up PDF preview cache files on close/beforeunload
@@ -144,6 +160,22 @@ function AppContent() {
   // Vault gate - must enter passcode before accessing the app
   if (!vaultUnlocked) {
     return <VaultGate onUnlocked={() => setVaultUnlocked(true)} />;
+  }
+
+  // License activation gate - must activate before using the app
+  if (licenseStatus === "loading") {
+    return (
+      <main className="h-screen w-screen flex items-center justify-center bg-telegram-bg">
+        <div className="flex flex-col items-center gap-4">
+          <img src="/logo.svg" className="w-16 h-16 drop-shadow-lg animate-pulse" alt="ClauSync" />
+          <p className="text-sm text-telegram-subtext tracking-wide">Checking license...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (licenseStatus === "not_activated") {
+    return <LicenseActivation onActivated={() => setLicenseStatus("activated")} />;
   }
 
   return (

@@ -41,3 +41,9 @@ local.properties
 
 *.key
 *.key.pub
+
+*.exe
+session_payload.bin
+_gen_test_key.js
+_setup_admin.py
+*.backup

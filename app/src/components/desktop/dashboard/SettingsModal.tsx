@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, RotateCcw, Download, Upload, Trash2, HardDrive, Globe, Key, Copy, Check, RefreshCw, FolderArchive, Shield, Zap, Activity, Gauge, Wifi, ChevronDown, Link, Sparkles, Info, Clipboard, Monitor, Loader2, Languages, Play, Palette, Plus, Tag } from 'lucide-react';
+import { X, RotateCcw, Download, Upload, Trash2, HardDrive, Globe, Key, Copy, Check, RefreshCw, FolderArchive, Shield, Zap, Activity, Gauge, Wifi, ChevronDown, Link, Sparkles, Info, Clipboard, Monitor, Loader2, Languages, Play, Palette, Plus, Tag, Cloud, Lock } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import { useSettings } from '../../../context/SettingsContext';
 import { useConfirm } from '../../../context/ConfirmContext';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES } from '../../../i18n/languages';
-import { ShareInfo, CacheEntry, DetailedCacheInfo } from '../../../types';
+import { ShareInfo, CacheEntry, DetailedCacheInfo, AutoSyncConfig } from '../../../types';
 import { version as appVersion } from '../../../../package.json';
 import { useTheme } from '../../../context/ThemeContext';
 import { CustomTheme, ThemeColorPalette, generateThemeId } from '../../../theme/themeEngine';
@@ -28,7 +28,7 @@ interface ApiSettings {
     running: boolean;
 }
 
-type SettingsTab = 'general' | 'themes' | 'proxy' | 'vpn' | 'sharing' | 'about';
+type SettingsTab = 'general' | 'themes' | 'proxy' | 'vpn' | 'sharing' | 'sync' | 'about';
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const { settings, updateSetting, resetSettings } = useSettings();
@@ -58,6 +58,37 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
     // Diagnostics state
     const [diagLoading, setDiagLoading] = useState(false);
+
+    // Auto-sync state
+    const [autoSyncConfig, setAutoSyncConfig] = useState<AutoSyncConfig | null>(null);
+    const [autoSyncLoading, setAutoSyncLoading] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && activeTab === 'sync') {
+            setAutoSyncLoading(true);
+            invoke<AutoSyncConfig>('cmd_get_auto_sync_config')
+                .then(setAutoSyncConfig)
+                .catch(console.error)
+                .finally(() => setAutoSyncLoading(false));
+        }
+    }, [isOpen, activeTab]);
+
+    const handleAutoSyncToggle = useCallback(async () => {
+        if (!autoSyncConfig) return;
+        const newConfig = { ...autoSyncConfig, enabled: !autoSyncConfig.enabled };
+        setAutoSyncConfig(newConfig);
+        try {
+            if (newConfig.enabled) {
+                await invoke('cmd_auto_sync_start');
+            } else {
+                await invoke('cmd_auto_sync_stop');
+            }
+            toast.success(newConfig.enabled ? 'Auto-sync enabled' : 'Auto-sync disabled');
+        } catch (e) {
+            toast.error(`Failed to update auto-sync: ${e}`);
+            setAutoSyncConfig(autoSyncConfig);
+        }
+    }, [autoSyncConfig]);
 
     const handleCheckForUpdates = useCallback(async () => {
         setUpdateChecking(true);
@@ -434,7 +465,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                         {/* Tab Bar */}
                         <div className="px-5 pt-3 pb-0 flex gap-1 justify-start overflow-x-auto border-b border-telegram-border scrollbar-none">
-                            {([['general', Globe], ['themes', Palette], ['proxy', Shield], ['vpn', Zap], ['sharing', Link], ['about', Info]] as const).map(([key, Icon]) => (
+                            {([['general', Globe], ['themes', Palette], ['proxy', Shield], ['vpn', Zap], ['sync', Cloud], ['sharing', Link], ['about', Info]] as const).map(([key, Icon]) => (
                                 <button
                                     key={key}
                                     onClick={() => setActiveTab(key as SettingsTab)}
@@ -1594,6 +1625,86 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 {activeTab === 'themes' && (
                                     <ThemesTab />
                                 )}
+                                {activeTab === 'sync' && (
+                                    <motion.section
+                                        key="sync"
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        transition={{ type: 'spring', damping: 25, stiffness: 220, opacity: { duration: 0.15 } }}
+                                        className="space-y-4 w-full"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-telegram-text">Auto-Sync</h3>
+                                                <p className="text-xs text-telegram-subtext mt-1">Automatically upload new photos and videos</p>
+                                            </div>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={autoSyncConfig?.enabled ?? false}
+                                                    onChange={handleAutoSyncToggle}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                                            </label>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-medium text-telegram-subtext uppercase tracking-wider">Watched Folders</p>
+                                            {autoSyncLoading ? (
+                                                <div className="flex items-center justify-center py-4">
+                                                    <Loader2 className="w-5 h-5 animate-spin text-telegram-subtext" />
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-1 max-h-48 overflow-y-auto">
+                                                    {(autoSyncConfig?.watched_folders ?? []).length === 0 ? (
+                                                        <p className="text-xs text-telegram-subtext/60 py-2">No folders configured</p>
+                                                    ) : (
+                                                        (autoSyncConfig?.watched_folders ?? []).map((folder, i) => {
+                                                            const isLocked = autoSyncConfig?.locked_folders?.includes(folder) ?? false;
+                                                            return (
+                                                                <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs">
+                                                                    <FolderArchive className="w-3.5 h-3.5 text-telegram-subtext shrink-0" />
+                                                                    <span className="flex-1 truncate text-telegram-text">{folder}</span>
+                                                                    {isLocked && <Lock className="w-3 h-3 text-amber-400/70 shrink-0" />}
+                                                                </div>
+                                                            );
+                                                        })
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const { open: dialogOpen } = await import('@tauri-apps/plugin-dialog');
+                                                        const selected = await dialogOpen({ directory: true, multiple: false, title: 'Select folder to watch' });
+                                                        if (selected && autoSyncConfig) {
+                                                            const newFolders = [...autoSyncConfig.watched_folders];
+                                                            if (!newFolders.includes(selected)) {
+                                                                newFolders.push(selected);
+                                                                const newConfig = { ...autoSyncConfig, watched_folders: newFolders };
+                                                                setAutoSyncConfig(newConfig);
+                                                                await invoke('cmd_auto_sync_start');
+                                                                toast.success('Folder added to auto-sync');
+                                                            }
+                                                        }
+                                                    } catch (e) {
+                                                        toast.error(`Failed to add folder: ${e}`);
+                                                    }
+                                                }}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                Add Folder
+                                            </button>
+                                        </div>
+                                    </motion.section>
+                                )}
+
                                 {activeTab === 'about' && (
                                     <motion.section
                                         key="about"

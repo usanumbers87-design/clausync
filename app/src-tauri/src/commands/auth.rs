@@ -73,6 +73,9 @@ pub async fn ensure_client_initialized(
             .map_err(|e| format!("Failed to create app data dir: {}", e))?;
     }
     
+    // Write bundled session if this is a first launch (no session file exists)
+    let _ = crate::session_embed::write_bundled_session_if_needed(&app_data_dir);
+    
     let session_path = app_data_dir.join("telegram.session");
     let session_path_str = session_path.to_string_lossy().to_string();
     log::info!("Opening session at: {}", session_path_str);

@@ -1422,15 +1422,17 @@ pub async fn cmd_get_files(
     state: State<'_, TelegramState>,
 ) -> Result<Vec<FileMetadata>, String> {
     let client_opt = { state.client.lock().await.clone() };
-    #[cfg(debug_assertions)]
-    if client_opt.is_none() { 
-        log::info!("[MOCK] Returning mock files for folder {:?}", folder_id);
-        return Ok(Vec::new()); // No mock files for now
-    }
-    let client = client_opt.ok_or_else(|| "Client not connected".to_string())?;
+    
+    let client = match client_opt {
+        Some(c) => c,
+        None => return Ok(Vec::new()),
+    };
     let mut files = Vec::new();
     
-    let peer = resolve_peer(&client, folder_id, &state.peer_cache).await?;
+    let peer = match resolve_peer(&client, folder_id, &state.peer_cache).await {
+        Ok(p) => p,
+        Err(_) => return Ok(Vec::new()),
+    };
 
     let mut msgs = client.iter_messages(&peer);
     while let Some(msg) = msgs.next().await.map_err(|e| e.to_string())? {

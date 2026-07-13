@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Key, Settings, ShieldCheck, Sun, Moon, Heart, X } from "lucide-react";
+import { Key, Settings, ShieldCheck, Sun, Moon, Heart, X, Phone, MessageCircle, Lock } from "lucide-react";
 import { load } from '@tauri-apps/plugin-store';
 import { useTheme } from '../../context/ThemeContext';
+import { invoke } from '@tauri-apps/api/core';
 
 function AuthThemeToggle() {
     const { theme, toggleTheme } = useTheme();
@@ -47,13 +48,21 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
     const [error, setError] = useState<string | null>(null);
     const [showDonate, setShowDonate] = useState(false);
 
+    const [initializing, setInitializing] = useState(false);
+    const [showAdmin, setShowAdmin] = useState(false);
+    const [adminStep, setAdminStep] = useState<'phone' | 'code' | 'password'>('phone');
+    const [phone, setPhone] = useState('');
+    const [code, setCode] = useState('');
+    const [password, setPassword] = useState('');
+    const [adminLoading, setAdminLoading] = useState(false);
+    const [logoClickCount, setLogoClickCount] = useState(0);
+
     useEffect(() => {
         const initStore = async () => {
             try {
                 const store = await load('config.json');
                 const savedId = await store.get<string>('api_id');
                 const savedHash = await store.get<string>('api_hash');
-
                 if (savedId && savedHash) {
                     setApiId(savedId);
                     setApiHash(savedHash);
@@ -89,8 +98,75 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
             return;
         }
         setError(null);
+        setInitializing(true);
         await saveCredentials();
         onLogin();
+    };
+
+    const handleLogoClicks = () => {
+        const next = logoClickCount + 1;
+        setLogoClickCount(next);
+        if (next >= 5) {
+            setShowAdmin(true);
+            setLogoClickCount(0);
+        }
+        setTimeout(() => setLogoClickCount(0), 3000);
+    };
+
+    const handleRequestCode = async () => {
+        if (!phone.trim()) return;
+        if (!apiId.trim() || !apiHash.trim()) {
+            setError("Please enter your API ID and Hash in the fields above first.");
+            return;
+        }
+        await saveCredentials();
+        setAdminLoading(true);
+        setError('');
+        try {
+            await invoke('cmd_auth_request_code', { phone: phone.trim(), apiId: parseInt(apiId, 10), apiHash: apiHash });
+            setAdminStep('code');
+        } catch (e) {
+            setError(String(e));
+        }
+        setAdminLoading(false);
+    };
+
+    const handleSignIn = async () => {
+        if (!code.trim()) return;
+        setAdminLoading(true);
+        setError('');
+        try {
+            const result = await invoke<{success: boolean; next_step?: string; error?: string}>('cmd_auth_sign_in', { code: code.trim() });
+            if (result.success) {
+                setShowAdmin(false);
+                onLogin();
+            } else if (result.next_step === 'password') {
+                setAdminStep('password');
+            } else {
+                setError(result.error || 'Sign in failed');
+            }
+        } catch (e) {
+            setError(String(e));
+        }
+        setAdminLoading(false);
+    };
+
+    const handleCheckPassword = async () => {
+        if (!password.trim()) return;
+        setAdminLoading(true);
+        setError('');
+        try {
+            const result = await invoke<{success: boolean; error?: string}>('cmd_auth_check_password', { password: password.trim() });
+            if (result.success) {
+                setShowAdmin(false);
+                onLogin();
+            } else {
+                setError(result.error || 'Incorrect password');
+            }
+        } catch (e) {
+            setError(String(e));
+        }
+        setAdminLoading(false);
     };
 
     return (
@@ -100,13 +176,13 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="auth-glass p-8 rounded-3xl shadow-2xl w-full max-w-md"
+                className="auth-glass p-6 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
             >
-                <div className="text-center mb-8">
-                    <div className="w-20 h-20 mb-6 mx-auto flex items-center justify-center filter drop-shadow-lg">
+                <div className="text-center mb-6">
+                    <button onClick={handleLogoClicks} className="w-16 h-16 mb-4 mx-auto flex items-center justify-center filter drop-shadow-lg cursor-pointer">
                         <img src="/logo.svg" alt="Logo" className="w-full h-full" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">ClauSync</h1>
+                    </button>
+                    <h1 className="text-xl font-bold text-white mb-1 tracking-tight">ClauSync</h1>
                     <p className="text-sm text-white/60 font-medium">Self-Hosted Secure Storage</p>
                 </div>
 
@@ -150,20 +226,11 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
 
                             <button
                                 type="submit"
-                                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
+                                disabled={initializing}
+                                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98] disabled:opacity-50"
                             >
-                                Configure <Settings className="w-4 h-4" />
+                                {initializing ? 'Connecting...' : 'Configure'} <Settings className="w-4 h-4" />
                             </button>
-
-                            {import.meta.env.DEV && (
-                                <button
-                                    type="button"
-                                    onClick={() => onLogin()}
-                                    className="w-full text-xs text-red-400/60 hover:text-red-300 transition-colors py-1"
-                                >
-                                    Dev Mode
-                                </button>
-                            )}
                         </motion.form>
                 </AnimatePresence>
 
@@ -187,9 +254,89 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                         Donate
                     </button>
                 </div>
+
+                {showAdmin && (
+                    <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
+                        <div className="text-center">
+                            <p className="text-xs text-white/40 uppercase tracking-wider">Admin — Telegram Login</p>
+                        </div>
+                        {adminStep === 'phone' && (
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                    <input
+                                        type="text"
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
+                                        placeholder="Phone number +1234567890"
+                                        className="w-full bg-white/10 border border-white/10 rounded-lg pl-10 pr-3 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleRequestCode}
+                                    disabled={adminLoading || !phone.trim()}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2 rounded-lg disabled:opacity-50"
+                                >
+                                    {adminLoading ? 'Sending...' : 'Send Code'}
+                                </button>
+                            </div>
+                        )}
+                        {adminStep === 'code' && (
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                    <input
+                                        type="text"
+                                        value={code}
+                                        onChange={(e) => setCode(e.target.value)}
+                                        placeholder="Code from Telegram"
+                                        className="w-full bg-white/10 border border-white/10 rounded-lg pl-10 pr-3 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleSignIn}
+                                    disabled={adminLoading || !code.trim()}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2 rounded-lg disabled:opacity-50"
+                                >
+                                    {adminLoading ? 'Signing in...' : 'Sign In'}
+                                </button>
+                            </div>
+                        )}
+                        {adminStep === 'password' && (
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="2FA password"
+                                        className="w-full bg-white/10 border border-white/10 rounded-lg pl-10 pr-3 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleCheckPassword}
+                                    disabled={adminLoading || !password.trim()}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2 rounded-lg disabled:opacity-50"
+                                >
+                                    {adminLoading ? 'Checking...' : 'Submit Password'}
+                                </button>
+                            </div>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => { setShowAdmin(false); setAdminStep('phone'); setPhone(''); setCode(''); setPassword(''); }}
+                            className="w-full text-xs text-white/30 hover:text-white/50 py-1"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                )}
+
             </motion.div>
-
-
             <AnimatePresence>
                 {showDonate && (
                     <motion.div

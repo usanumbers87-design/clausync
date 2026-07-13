@@ -36,9 +36,17 @@ export function useTelegramConnection(onLogoutParent: () => void) {
         const initStore = async () => {
             try {
                 let _store = await load('config.json');
-                const checkId = await _store.get<string>('api_id');
-                if (!checkId) {
+                const savedId = await _store.get<string>('api_id');
+                if (!savedId) {
                     _store = await load('settings.json');
+                } else {
+                    // Fire backend client init as early as possible for other components that depend on it.
+                    const apiId = parseInt(savedId, 10);
+                    if (!isNaN(apiId)) {
+                        invoke('cmd_connect', { apiId }).catch((e) => {
+                            console.warn('Client init on mount failed:', e);
+                        });
+                    }
                 }
                 setStore(_store);
 
@@ -69,6 +77,9 @@ export function useTelegramConnection(onLogoutParent: () => void) {
 
                 setIsConnected(true);
                 queryClient.invalidateQueries({ queryKey: ['files'] });
+
+                // Auto-start background sync
+                invoke('cmd_auto_sync_start').catch(() => {});
             } catch {
                 // store not available
             }
